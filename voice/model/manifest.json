@@ -72,5 +72,10 @@
       "file": "model.onnx.part16",
       "bytes": 19529565
     }
-  ]
+  ],
+  "graph": {
+    "file": "graph.onnx",
+    "bytes": 843872,
+    "weightsName": "weights"
+  }
 }

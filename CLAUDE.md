@@ -48,6 +48,14 @@ Not done / open:
   315M parameters, TIMIT phoneme CTC, 39 phonemes). Exported to ONNX and
   int8-quantized by `tools/export_model.py`: 355 MB, committed as 17 chunks of
   20 MB in `voice/model/` with a `manifest.json` (sizes and SHA-256).
+- **Loading:** `model.js` starts the session from `voice/model/graph.onnx`
+  (0.8 MB, wiring only, written by `tools/make_graph.py`) and passes the
+  reassembled chunks as onnxruntime `externalData` named `weights`;
+  `graph.onnx` points at byte offsets inside them. Passing the 355 MB file as
+  the model itself needed an 823 MB WASM heap and failed with
+  `std::bad_alloc` on one of the owner's phones; this way needs 358 MB
+  (measured in desktop Chromium). Regenerate `graph.onnx` whenever the chunks
+  change (`export_model.py` does).
 - **Quantization:** MatMul/Gemm only. Quantized Conv layers are known to crash
   onnxruntime on wav2vec2. The int8 model matched fp32 exactly on 14 of the 18
   child clips and differed by one or two phonemes on the rest.
@@ -115,11 +123,12 @@ voice/
     main.js             kid UI states: loading/ready/recording/thinking
   voice.css             kid UI looks, driven by <body data-state>
   data/vocab.json       generated: tokens, blankId, separatorIds
-  model/                generated: model.onnx.part0..16 + manifest.json
+  model/                generated: model.onnx.part0..16, graph.onnx, manifest.json
   vendor/ort/           onnxruntime-web, plain WASM build only
 tools/
   export_model.py       download, export, quantize, chunk the model
   check_model.py        compare fp32 vs int8 output on audio files
+  make_graph.py         write voice/model/graph.onnx from the chunks
   .venv/, build/        git-ignored (Python env; ONNX files and test clips)
 ```
 

@@ -8,7 +8,9 @@ What it does, in order:
   3. Quantizes the weights to int8, which is what shrinks it to ~355 MB.
   4. Splits the int8 file into chunks under voice/model/ (git rejects any
      single file over 100 MB, and small chunks also resume better on a phone).
-  5. Writes voice/data/vocab.json (phoneme <-> output index table).
+  5. Writes voice/model/graph.onnx, the small weights-free file the browser
+     actually starts the model from (see make_graph.py for why).
+  6. Writes voice/data/vocab.json (phoneme <-> output index table).
 
 Run from the repo root:
     tools/.venv/bin/python tools/export_model.py
@@ -25,6 +27,8 @@ import onnx
 import torch
 from onnxruntime.quantization import QuantType, quantize_dynamic
 from transformers import AutoModelForCTC, AutoProcessor
+
+from make_graph import write_graph
 
 # Why this model: the smaller bookbot/wav2vec2-ljspeech-gruut (122 MB) was
 # tried first and returned nothing at all for most recordings of a small
@@ -140,6 +144,9 @@ def split_into_chunks():
     }
     (MODEL_OUT / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print(f"Wrote {len(parts)} chunks, {len(data) / 1e6:.1f} MB total -> {MODEL_OUT}")
+    # graph.onnx points at byte positions inside these chunks, so it has to
+    # be rebuilt every time they change.
+    write_graph(data)
 
 
 def write_vocab(processor, n_outputs):

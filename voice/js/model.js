@@ -68,7 +68,23 @@ export async function loadModel(onProgress = () => {}) {
     console.warn('Not a secure page: skipping the model checksum.');
   }
 
-  session = await ort.InferenceSession.create(bytes, { executionProviders: ['wasm'] });
+  // Start the model. onnxruntime is given two things:
+  //   - graph.onnx: the small "wiring" file, with no weights in it;
+  //   - the 355 MB we just downloaded, as a separate blob of weights that
+  //     graph.onnx points into (see tools/make_graph.py).
+  // Handing it the 355 MB as the model itself also works on a desktop, but
+  // it then keeps two copies while starting up, and phones with little
+  // memory fail with "std::bad_alloc". This way it copies each weight once.
+  const graphRes = await fetch(new URL(manifest.graph.file, MODEL_DIR));
+  if (!graphRes.ok) throw new Error(`Could not download ${manifest.graph.file} (${graphRes.status})`);
+  const graph = new Uint8Array(await graphRes.arrayBuffer());
+  if (graph.length !== manifest.graph.bytes) {
+    throw new Error(`${manifest.graph.file} is ${graph.length} bytes, expected ${manifest.graph.bytes}`);
+  }
+  session = await ort.InferenceSession.create(graph, {
+    executionProviders: ['wasm'],
+    externalData: [{ path: manifest.graph.weightsName, data: bytes }],
+  });
   return vocab;
 }
 

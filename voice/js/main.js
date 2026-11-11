@@ -114,5 +114,10 @@ try {
   setState('ready', 'Tap and say the sound');
 } catch (err) {
   console.error(err);
-  setState('error', `Could not load: ${err.message}`);
+  // "bad_alloc" is onnxruntime's way of saying the device ran out of memory.
+  const reason = /bad_alloc|out of memory/i.test(err.message)
+    ? 'this device does not have enough free memory for the model. ' +
+      'Close other tabs and apps, then reload.'
+    : err.message;
+  setState('error', `Could not load: ${reason}`);
 }
