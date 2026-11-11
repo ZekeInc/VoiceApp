@@ -1,0 +1,32 @@
+{
+  "source": "bookbot/wav2vec2-ljspeech-gruut",
+  "format": "onnx, int8 dynamic quantization of MatMul/Gemm",
+  "totalBytes": 121963246,
+  "sha256": "f2ce669e7020041e58b582c16ca1c0fa50c622dbf2fd522a74cc7d6662e05250",
+  "parts": [
+    {
+      "file": "model.onnx.part0",
+      "bytes": 20971520
+    },
+    {
+      "file": "model.onnx.part1",
+      "bytes": 20971520
+    },
+    {
+      "file": "model.onnx.part2",
+      "bytes": 20971520
+    },
+    {
+      "file": "model.onnx.part3",
+      "bytes": 20971520
+    },
+    {
+      "file": "model.onnx.part4",
+      "bytes": 20971520
+    },
+    {
+      "file": "model.onnx.part5",
+      "bytes": 17105646
+    }
+  ]
+}

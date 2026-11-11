@@ -1,0 +1,140 @@
+<!doctype html>
+<!--
+  spike.html — step 1 test page (not the kid UI).
+
+  Purpose: find out whether the phoneme model is good enough and fast enough
+  on a real phone before anything else is built. Pick one or more audio
+  files; for each one it shows what phonemes the model heard and how long
+  the model took.
+
+  It does NOT score right/wrong yet. That is scorer.js, a later step.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VoiceApp model test</title>
+  <style>
+    body { font: 16px/1.4 system-ui, sans-serif; margin: 16px; max-width: 720px; }
+    h1 { font-size: 20px; }
+    #status { padding: 8px 12px; background: #eef; border-radius: 8px; }
+    #status.error { background: #fdd; }
+    progress { width: 100%; height: 16px; }
+    input[type=file] { font-size: 16px; margin: 16px 0; width: 100%; }
+    .clip { border: 1px solid #ccc; border-radius: 8px; padding: 10px 12px; margin: 12px 0; }
+    .clip audio { width: 100%; margin: 6px 0; }
+    .name { font-weight: 600; word-break: break-all; }
+    .meta { color: #555; font-size: 14px; }
+    .phonemes { font-size: 26px; margin: 8px 0 2px; line-height: 1.8; }
+    /* Each phoneme is tinted by confidence: solid = sure, pale = guessing. */
+    .ph { display: inline-block; padding: 0 6px; margin: 0 2px; border-radius: 6px; background: #cfe8cf; }
+    .ph.mid { background: #f6e7b0; }
+    .ph.low { background: #f3c6c6; }
+    .ph small { display: block; font-size: 11px; line-height: 1.2; color: #444; text-align: center; }
+    button { font-size: 16px; padding: 8px 14px; }
+  </style>
+</head>
+<body>
+  <h1>VoiceApp model test</h1>
+  <div id="status">Loading model…</div>
+  <progress id="progress" value="0" max="1"></progress>
+
+  <!-- On Android, "audio/*" also offers the voice recorder as a source. -->
+  <input id="files" type="file" accept="audio/*" multiple disabled>
+
+  <div id="results"></div>
+  <button id="copy" hidden>Copy results as text</button>
+
+  <script type="module">
+    import { loadModel, runModel, greedyDecode } from './voice/js/model.js';
+    import { decodeTo16k, SAMPLE_RATE } from './voice/js/audio.js';
+
+    const $ = (id) => document.getElementById(id);
+    const log = []; // plain-text copy of every result, for the Copy button
+
+    function setStatus(text, isError = false) {
+      $('status').textContent = text;
+      $('status').classList.toggle('error', isError);
+    }
+
+    // ---- Load the model once, timing the download and the start-up. ----
+    try {
+      const t0 = performance.now();
+      await loadModel((fraction) => { $('progress').value = fraction; });
+      const seconds = ((performance.now() - t0) / 1000).toFixed(1);
+      setStatus(`Model ready (loaded in ${seconds} s). Choose audio files.`);
+      log.push(`model load: ${seconds} s`, navigator.userAgent, '');
+      $('progress').hidden = true;
+      $('files').disabled = false;
+    } catch (err) {
+      setStatus(`Model failed to load: ${err.message}`, true);
+      throw err;
+    }
+
+    // ---- Run every chosen file through the model, one at a time. ----
+    $('files').addEventListener('change', async () => {
+      const files = [...$('files').files];
+      for (const [i, file] of files.entries()) {
+        setStatus(`Working on ${i + 1} of ${files.length}: ${file.name}`);
+        const card = document.createElement('div');
+        card.className = 'clip';
+        $('results').prepend(card);
+        try {
+          const samples = await decodeTo16k(file);
+          const t0 = performance.now();
+          const output = await runModel(samples);
+          const modelSeconds = (performance.now() - t0) / 1000;
+          showResult(card, file, samples.length / SAMPLE_RATE, modelSeconds, greedyDecode(output));
+        } catch (err) {
+          card.textContent = `${file.name}: failed (${err.message})`;
+          log.push(`${file.name}: FAILED ${err.message}`);
+        }
+      }
+      setStatus('Done. Choose more files to test again.');
+      $('copy').hidden = false;
+      $('files').value = ''; // lets the same file be picked again
+    });
+
+    function showResult(card, file, clipSeconds, modelSeconds, decoded) {
+      // The model puts a "|" token between phonemes; it carries no sound, so
+      // hide it here to keep the display readable.
+      const phonemes = decoded.filter((d) => d.token !== '|');
+
+      const name = document.createElement('div');
+      name.className = 'name';
+      name.textContent = file.name;
+
+      const player = document.createElement('audio');
+      player.controls = true;
+      player.src = URL.createObjectURL(file);
+
+      const line = document.createElement('div');
+      line.className = 'phonemes';
+      for (const { token, prob } of phonemes) {
+        const span = document.createElement('span');
+        span.className = 'ph' + (prob < 0.5 ? ' low' : prob < 0.8 ? ' mid' : '');
+        span.textContent = token;
+        const pct = document.createElement('small');
+        pct.textContent = Math.round(prob * 100) + '%';
+        span.append(pct);
+        line.append(span);
+      }
+      if (!phonemes.length) line.textContent = '(nothing heard)';
+
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = `clip ${clipSeconds.toFixed(1)} s · model took ${modelSeconds.toFixed(2)} s`;
+
+      card.append(name, player, line, meta);
+      log.push(
+        `${file.name} | clip ${clipSeconds.toFixed(1)}s | model ${modelSeconds.toFixed(2)}s | ` +
+        (phonemes.map((p) => `${p.token}(${Math.round(p.prob * 100)})`).join(' ') || '(nothing)'));
+    }
+
+    $('copy').addEventListener('click', async () => {
+      await navigator.clipboard.writeText(log.join('\n'));
+      $('copy').textContent = 'Copied';
+    });
+  </script>
+</body>
+</html>
