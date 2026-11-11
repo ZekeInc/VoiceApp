@@ -1,0 +1,135 @@
+/* voice.css — looks for the kid UI (index.html).
+ *
+ * The page has one state at a time, set by main.js as <body data-state="…">:
+ *   loading    model is downloading          grey button, spinner
+ *   ready      waiting for a tap             green button, microphone
+ *   starting   asking for the microphone     green button, dimmed
+ *   recording  listening                     red button, square, moving ring
+ *   thinking   model is running              grey button, spinner
+ *   error      something broke               grey button, red message
+ */
+
+:root {
+  --bg: #fff6e0;
+  --ink: #33291a;
+  --go: #2fa84f;        /* ready to record */
+  --rec: #e5484d;       /* recording */
+  --wait: #b9b2a3;      /* loading / thinking / error */
+  --button: min(56vw, 240px); /* record button diameter */
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--ink);
+  font: 18px/1.4 system-ui, sans-serif;
+  /* Stop long-presses on the button selecting text or opening menus. */
+  -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+main {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
+}
+
+/* ---- Record button ---------------------------------------------------- */
+
+.record-wrap {
+  position: relative;
+  width: var(--button);
+  height: var(--button);
+  margin: calc(var(--button) * 0.2); /* room for the ring to grow into */
+}
+
+.record {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 50%;
+  background: var(--wait);
+  color: #fff;
+  box-shadow: 0 8px 0 rgb(0 0 0 / 0.18);
+  cursor: pointer;
+  touch-action: manipulation; /* no double-tap zoom delay */
+  transition: background 0.15s, transform 0.08s, box-shadow 0.08s;
+}
+.record:disabled { cursor: default; }
+.record:active:not(:disabled) { transform: translateY(5px); box-shadow: 0 3px 0 rgb(0 0 0 / 0.18); }
+.record:focus-visible { outline: 4px solid var(--ink); outline-offset: 6px; }
+
+[data-state="ready"] .record,
+[data-state="starting"] .record { background: var(--go); }
+[data-state="starting"] .record { opacity: 0.6; }
+[data-state="recording"] .record { background: var(--rec); }
+
+/* Only the icon for the current state is shown. */
+.icon { position: absolute; inset: 22%; width: 56%; height: 56%; fill: currentColor; display: none; }
+[data-state="ready"] .icon-mic,
+[data-state="starting"] .icon-mic,
+[data-state="recording"] .icon-stop,
+[data-state="loading"] .icon-spinner,
+[data-state="thinking"] .icon-spinner { display: block; }
+
+.icon-spinner {
+  border: calc(var(--button) * 0.05) solid rgb(255 255 255 / 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Ring behind the button. main.js sets --level (0 silent .. 1 loud) while
+ * recording; the ring grows up to 35% bigger than the button. */
+.level-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--rec);
+  opacity: 0;
+  transform: scale(calc(1 + 0.35 * var(--level, 0)));
+  transition: transform 0.08s linear;
+}
+[data-state="recording"] .level-ring { opacity: 0.3; }
+
+/* ---- Status line and loading bar ------------------------------------- */
+
+.status { margin: 0; min-height: 1.4em; text-align: center; font-size: 20px; }
+[data-state="error"] .status { color: #b3261e; }
+
+progress { width: min(80vw, 320px); height: 14px; }
+body:not([data-state="loading"]) progress { display: none; }
+
+/* ---- Temporary "what the model heard" panel -------------------------- */
+
+.heard {
+  width: min(100%, 480px);
+  padding: 12px 14px;
+  background: #fff;
+  border-radius: 12px;
+  -webkit-user-select: text; user-select: text;
+}
+.heard h2 { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: #6b6253; }
+.heard audio { width: 100%; margin-top: 8px; }
+.meta { margin: 6px 0 0; font-size: 14px; color: #6b6253; }
+
+.phonemes { font-size: 26px; line-height: 1.8; }
+/* Each phoneme is tinted by confidence: green = sure, red = guessing. */
+.ph { display: inline-block; padding: 0 6px; margin: 0 2px; border-radius: 6px; background: #cfe8cf; }
+.ph.mid { background: #f6e7b0; }
+.ph.low { background: #f3c6c6; }
+.ph small { display: block; font-size: 11px; line-height: 1.2; color: #444; text-align: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .level-ring, .record { transition: none; }
+  .icon-spinner { animation-duration: 2.5s; }
+}

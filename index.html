@@ -1,0 +1,57 @@
+<!doctype html>
+<!--
+  index.html — the kid UI (in progress).
+
+  So far: one big record button. Tap it, say a sound, tap again. Until the
+  scorer exists there is no star / try again; instead a small "testing" panel
+  shows what the model heard and lets you play the recording back.
+
+  All behaviour is in voice/js/main.js, all looks in voice/voice.css.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#fff6e0">
+  <title>VoiceApp</title>
+  <link rel="stylesheet" href="voice/voice.css">
+</head>
+<!-- data-state is set by main.js: loading | ready | starting | recording |
+     thinking | error. The CSS changes the button's look from it. -->
+<body data-state="loading">
+  <main>
+    <!-- The ring grows with the loudness of the voice while recording. -->
+    <div class="record-wrap">
+      <div class="level-ring" aria-hidden="true"></div>
+      <button id="record" class="record" type="button" disabled aria-label="Loading">
+        <!-- Microphone: shown when ready to record. -->
+        <svg class="icon icon-mic" viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="9" y="2.5" width="6" height="11.5" rx="3"/>
+          <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <!-- Square: shown while recording (tap to stop). -->
+        <svg class="icon icon-stop" viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="6" y="6" width="12" height="12" rx="2.5"/>
+        </svg>
+        <!-- Spinner: shown while loading and while the model is thinking. -->
+        <span class="icon icon-spinner" aria-hidden="true"></span>
+      </button>
+    </div>
+
+    <p id="status" class="status" role="status">Getting ready…</p>
+    <progress id="progress" value="0" max="1"></progress>
+
+    <!-- Temporary: what the model heard. Replaced by star / try again once
+         scorer.js exists; the details will move into debug mode. -->
+    <section id="heard" class="heard" hidden>
+      <h2>Testing: what the model heard</h2>
+      <div id="phonemes" class="phonemes"></div>
+      <audio id="playback" controls></audio>
+      <p id="meta" class="meta"></p>
+    </section>
+  </main>
+
+  <script type="module" src="voice/js/main.js"></script>
+</body>
+</html>
