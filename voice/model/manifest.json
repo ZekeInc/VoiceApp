@@ -1,8 +1,8 @@
 {
-  "source": "bookbot/wav2vec2-ljspeech-gruut",
+  "source": "vitouphy/wav2vec2-xls-r-300m-timit-phoneme",
   "format": "onnx, int8 dynamic quantization of MatMul/Gemm",
-  "totalBytes": 121963246,
-  "sha256": "f2ce669e7020041e58b582c16ca1c0fa50c622dbf2fd522a74cc7d6662e05250",
+  "totalBytes": 355073885,
+  "sha256": "7bba63e48be40200e28551c2a131cdf3a407560e7f5f827ce1b194b166114b6e",
   "parts": [
     {
       "file": "model.onnx.part0",
@@ -26,7 +26,51 @@
     },
     {
       "file": "model.onnx.part5",
-      "bytes": 17105646
+      "bytes": 20971520
+    },
+    {
+      "file": "model.onnx.part6",
+      "bytes": 20971520
+    },
+    {
+      "file": "model.onnx.part7",
+      "bytes": 20971520
+    },
+    {
+      "file": "model.onnx.part8",
+      "bytes": 20971520
+    },
+    {
+      "file": "model.onnx.part9",
+      "bytes": 20971520
+    },
+    {
+      "file": "model.onnx.part10",
+      "bytes": 20971520
+    },
+    {
+      "file": "model.onnx.part11",
+      "bytes": 20971520
+    },
+    {
+      "file": "model.onnx.part12",
+      "bytes": 20971520
+    },
+    {
+      "file": "model.onnx.part13",
+      "bytes": 20971520
+    },
+    {
+      "file": "model.onnx.part14",
+      "bytes": 20971520
+    },
+    {
+      "file": "model.onnx.part15",
+      "bytes": 20971520
+    },
+    {
+      "file": "model.onnx.part16",
+      "bytes": 19529565
     }
   ]
 }

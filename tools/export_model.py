@@ -3,9 +3,9 @@ Step 1 of the build plan: turn the Hugging Face phoneme model into files the
 browser can load.
 
 What it does, in order:
-  1. Downloads bookbot/wav2vec2-ljspeech-gruut (PyTorch, ~360 MB).
+  1. Downloads vitouphy/wav2vec2-xls-r-300m-timit-phoneme (PyTorch, ~1.3 GB).
   2. Exports it to ONNX (fp32) in tools/build/.
-  3. Quantizes the weights to int8, which is what shrinks it to ~95 MB.
+  3. Quantizes the weights to int8, which is what shrinks it to ~355 MB.
   4. Splits the int8 file into chunks under voice/model/ (git rejects any
      single file over 100 MB, and small chunks also resume better on a phone).
   5. Writes voice/data/vocab.json (phoneme <-> output index table).
@@ -26,7 +26,15 @@ import torch
 from onnxruntime.quantization import QuantType, quantize_dynamic
 from transformers import AutoModelForCTC, AutoProcessor
 
-MODEL_ID = "bookbot/wav2vec2-ljspeech-gruut"
+# Why this model: the smaller bookbot/wav2vec2-ljspeech-gruut (122 MB) was
+# tried first and returned nothing at all for most recordings of a small
+# child. It was trained on a single adult voice. This one is three times the
+# size but was trained on many speakers (TIMIT) and hears children.
+MODEL_ID = "vitouphy/wav2vec2-xls-r-300m-timit-phoneme"
+
+# Tokens the model outputs that are not speech sounds: "|" and " " both mark
+# gaps between words/phonemes. Scoring must treat them as optional filler.
+SEPARATOR_TOKENS = ["|", " "]
 
 REPO = Path(__file__).resolve().parent.parent
 BUILD = REPO / "tools" / "build"          # scratch output, git-ignored
@@ -90,7 +98,7 @@ def export_fp32():
         dynamo=False,  # the classic exporter; simplest graph for quantizing
         external_data=False,
     )
-    return processor
+    return processor, model.config.vocab_size
 
 
 def quantize():
@@ -134,12 +142,12 @@ def split_into_chunks():
     print(f"Wrote {len(parts)} chunks, {len(data) / 1e6:.1f} MB total -> {MODEL_OUT}")
 
 
-def write_vocab(processor):
+def write_vocab(processor, n_outputs):
     DATA_OUT.mkdir(parents=True, exist_ok=True)
     vocab = processor.tokenizer.get_vocab()  # {"phoneme": index}
-    # Keep only the first 45 entries: those are the model's real output
-    # columns. The tokenizer lists a couple of malformed extras after them.
-    n_out = 45
+    # Keep only as many entries as the model has output columns. Tokenizers
+    # sometimes list malformed extras after them.
+    n_out = n_outputs
     by_id = [None] * n_out
     for token, idx in vocab.items():
         if idx < n_out:
@@ -148,6 +156,8 @@ def write_vocab(processor):
         "source": MODEL_ID,
         # CTC "blank" = the model saying "no new phoneme in this frame".
         "blankId": processor.tokenizer.pad_token_id,
+        # Output columns that are gaps, not sounds (see SEPARATOR_TOKENS).
+        "separatorIds": [i for i, t in enumerate(by_id) if t in SEPARATOR_TOKENS],
         "tokens": by_id,  # tokens[i] is the phoneme for output column i
     }
     (DATA_OUT / "vocab.json").write_text(
@@ -156,10 +166,10 @@ def write_vocab(processor):
 
 
 if __name__ == "__main__":
-    proc = export_fp32()
+    proc, n_outputs = export_fp32()
     quantize()
     split_into_chunks()
-    write_vocab(proc)
+    write_vocab(proc, n_outputs)
     print(f"fp32: {FP32_PATH.stat().st_size / 1e6:.1f} MB   "
           f"int8: {INT8_PATH.stat().st_size / 1e6:.1f} MB")
     sys.exit(0)

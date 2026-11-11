@@ -20,13 +20,18 @@ service worker are not written yet; the layout below marks what exists.
 
 ## Design decisions
 
-- **Model:** `bookbot/wav2vec2-ljspeech-gruut` (wav2vec2-base, IPA phoneme CTC),
-  exported to ONNX and int8-quantized by us: 122 MB, in six chunks. Quantize
-  MatMul/Gemm only; quantized Conv layers are known to crash onnxruntime on wav2vec2.
-  Unproven on children's voices. Fallback if it fails: a wav2vec2-large phoneme
-  model at roughly 320-355 MB.
-- **Model output quirk:** it emits a `|` token (id 0) between most phonemes.
-  It carries no sound; the scorer must allow an optional `|` between targets.
+- **Model:** `vitouphy/wav2vec2-xls-r-300m-timit-phoneme` (wav2vec2-large,
+  TIMIT phoneme CTC, 39 phonemes), exported to ONNX and int8-quantized by us:
+  355 MB, in 17 chunks. Quantize MatMul/Gemm only; quantized Conv layers are
+  known to crash onnxruntime on wav2vec2.
+- **Rejected model:** `bookbot/wav2vec2-ljspeech-gruut` (122 MB) was tried
+  first. It returned nothing for 13 of 18 clips of a 2-year-old, quantized or
+  not, while handling adult speech fine. Do not go back to it to save size.
+- **Model output quirk:** it emits gap tokens `|` (id 0) and ` ` (id 16)
+  between phonemes. They carry no sound and are listed in `vocab.json` as
+  `separatorIds`; the scorer must allow optional gaps between targets.
+- **Speed:** about 0.5 s of model time per second of audio in desktop
+  Chromium, single-threaded. Not yet measured on the phone.
 - **Runtime:** onnxruntime-web called directly, not transformers.js, because
   scoring needs raw per-frame log-probabilities.
 - **Scoring is constrained, not open recognition.** For each item, compute the

@@ -96,9 +96,7 @@
     });
 
     function showResult(card, file, clipSeconds, modelSeconds, decoded) {
-      // The model puts a "|" token between phonemes; it carries no sound, so
-      // hide it here to keep the display readable.
-      const phonemes = decoded.filter((d) => d.token !== '|');
+      const phonemes = decoded; // gap tokens are already removed by greedyDecode
 
       const name = document.createElement('div');
       name.className = 'name';

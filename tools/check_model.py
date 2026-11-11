@@ -43,7 +43,7 @@ def greedy_decode(logits):
     ids = logits.argmax(-1)
     out, prev = [], -1
     for i in ids:
-        if i != prev and i != VOCAB["blankId"]:
+        if i != prev and i != VOCAB["blankId"] and i not in VOCAB["separatorIds"]:
             out.append(VOCAB["tokens"][i])
         prev = i
     return " ".join(out)

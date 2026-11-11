@@ -1,8 +1,9 @@
 // model.js — loads the phoneme model and runs it on audio.
 //
-// The model is wav2vec2 (bookbot/wav2vec2-ljspeech-gruut), exported to ONNX
-// by tools/export_model.py. It takes 16 kHz mono audio and returns, for every
-// 20 ms "frame" of audio, a score for each of 45 phoneme tokens.
+// The model is wav2vec2 (vitouphy/wav2vec2-xls-r-300m-timit-phoneme),
+// exported to ONNX by tools/export_model.py. It takes 16 kHz mono audio and
+// returns, for every 20 ms "frame" of audio, a score for each of 44 tokens
+// (39 phonemes plus blank, two "gap" tokens and two unused ones).
 //
 // Nothing in here knows about letters, words or scoring. It only turns audio
 // into a grid of per-frame phoneme probabilities; scorer.js (later step)
@@ -23,7 +24,7 @@ ort.env.wasm.wasmPaths = ORT_DIR.href;
 ort.env.wasm.numThreads = 1;
 
 let session = null; // the loaded ONNX model
-let vocab = null;   // { blankId: number, tokens: string[] }
+let vocab = null;   // { blankId, separatorIds: number[], tokens: string[] }
 
 /**
  * Download the model (once per page load) and get it ready to run.
@@ -119,7 +120,9 @@ export async function runModel(samples) {
  * The real app does constrained scoring instead (see scorer.js).
  *
  * Takes the best token in each frame, merges runs of the same token and
- * drops blanks (standard greedy CTC decoding).
+ * drops blanks (standard greedy CTC decoding). The model's "gap" tokens
+ * ("|" and " ", listed in vocab.separatorIds) are dropped too, since they
+ * are not sounds.
  *
  * @returns {{token: string, prob: number, startMs: number}[]} prob is the
  *          average confidence (0..1) over the frames of that token.
@@ -133,7 +136,7 @@ export function greedyDecode({ logProbs, frames, vocabSize }) {
       if (logProbs[f * vocabSize + v] > logProbs[f * vocabSize + best]) best = v;
     }
     const p = Math.exp(logProbs[f * vocabSize + best]);
-    if (best !== vocab.blankId) {
+    if (best !== vocab.blankId && !vocab.separatorIds.includes(best)) {
       if (best !== prev) {
         out.push({ token: vocab.tokens[best], prob: p, n: 1, startMs: f * 20 });
       } else {
