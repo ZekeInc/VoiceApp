@@ -2,7 +2,9 @@
 <!--
   index.html — the kid UI (in progress).
 
-  So far: one big record button. Tap it, say a sound, tap again. Until the
+  So far: the letter to say at the top (with how to say it and, for
+  testing, the phonemes it should match), a Next letter button, and one big
+  record button. Tap it, say a sound, tap again. Until the
   scorer exists there is no star / try again; instead a small "testing" panel
   shows what the model heard and lets you play the recording back.
 
@@ -20,6 +22,16 @@
      thinking | error. The CSS changes the button's look from it. -->
 <body data-state="loading">
   <main>
+    <!-- The current item, filled in by main.js from voice/data/items.json. -->
+    <header class="item">
+      <div id="item-show" class="item-show" lang="en"></div>
+      <div id="item-say" class="item-say"></div>
+      <div id="item-example" class="item-example"></div>
+      <!-- Temporary, for testing: the phonemes the scorer will listen for.
+           Moves into debug mode later. -->
+      <div id="item-target" class="item-target"></div>
+    </header>
+
     <!-- The ring grows with the loudness of the voice while recording. -->
     <div class="record-wrap">
       <div class="level-ring" aria-hidden="true"></div>
@@ -41,6 +53,9 @@
 
     <p id="status" class="status" role="status">Getting ready…</p>
     <progress id="progress" value="0" max="1"></progress>
+
+    <!-- Move on to the next letter (wraps from the last back to the first). -->
+    <button id="next" class="next" type="button" disabled>Next letter →</button>
 
     <!-- Temporary: what the model heard. Replaced by star / try again once
          scorer.js exists; the details will move into debug mode. -->

@@ -9,7 +9,10 @@ star or "try again".
 
 Step 1 of 8 (model spike) is built and pushed. Steps 2 and 6 are started
 (uncommitted): `index.html` has a record button that records the microphone,
-runs the model and shows what it heard in a temporary "testing" panel. No
+runs the model and shows what it heard in a temporary "testing" panel. It
+also shows the current letter (big), how to say it ("buh"), an example word,
+the phonemes it should match (temporary, for testing), and a "Next letter"
+button that walks a-z from `voice/data/items.json`. No
 scoring, target-sound playback, auto-stop on silence or offline cache yet.
 Steps 3-5, 7 and 8 are not started.
 
@@ -120,9 +123,13 @@ voice/
                         stops on a second tap or at RECORDER.maxSeconds
     recorder-worklet.js audio-thread half of recorder.js
     config.js           every tunable setting (recorder only so far)
-    main.js             kid UI states: loading/ready/recording/thinking
+    main.js             kid UI states: loading/ready/recording/thinking;
+                        letter display and Next letter button
+    items.js            loadItems(), checkItems() (tokens vs vocab.json)
   voice.css             kid UI looks, driven by <body data-state>
   data/vocab.json       generated: tokens, blankId, separatorIds
+  data/items.json       hand-edited: letters a-z with show, say, example,
+                        target phonemes, alsoOk (stop + ə); no confusions yet
   model/                generated: model.onnx.part0..16, graph.onnx, manifest.json
   vendor/ort/           onnxruntime-web, plain WASM build only
 tools/
@@ -142,7 +149,7 @@ voice/
   js/scorer.js          constrained CTC scoring
   js/config.js          add: scoring thresholds
   js/debug.js           save, list, label, export and re-score recordings
-  data/items.json       per item: target phonemes, confusions, audio clip
+  data/items.json       add: confusions, audio clip, 3-letter words
   audio/                prerecorded target sounds
 ```
 

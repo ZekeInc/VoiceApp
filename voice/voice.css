@@ -41,6 +41,40 @@ main {
   padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
 }
 
+/* ---- The letter to say (top of the page) ------------------------------ */
+
+.item { text-align: center; }
+/* The big letter. Scales with the screen, but never bigger than 160px. */
+.item-show {
+  font-size: min(36vw, 160px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+/* How to say it ("buh"), for the grown-up to read out. */
+.item-say { font-size: 32px; font-weight: 600; margin-top: 4px; }
+.item-example { font-size: 18px; color: #6b6253; }
+/* Temporary: the phonemes it should match. Uses the .ph chips below. */
+.item-target { font-size: 20px; margin-top: 10px; color: #6b6253; }
+.item-target .ph { color: var(--ink); }
+
+/* ---- Next letter button ---------------------------------------------- */
+
+.next {
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 28px;
+  background: #fff;
+  color: var(--ink);
+  font: 600 20px/1 system-ui, sans-serif;
+  box-shadow: 0 4px 0 rgb(0 0 0 / 0.15);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.next:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 rgb(0 0 0 / 0.15); }
+.next:disabled { opacity: 0.45; cursor: default; }
+.next:focus-visible { outline: 4px solid var(--ink); outline-offset: 4px; }
+
 /* ---- Record button ---------------------------------------------------- */
 
 .record-wrap {

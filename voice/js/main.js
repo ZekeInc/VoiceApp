@@ -7,18 +7,25 @@
 //
 // There is no scoring yet, so after "thinking" the page shows what the
 // model heard instead of a star / try again.
+//
+// The letter to say comes from voice/data/items.json; the Next letter
+// button steps through them in order.
 
 import { loadModel, runModel, greedyDecode } from './model.js';
 import { startRecording } from './recorder.js';
 import { encodeWav, SAMPLE_RATE } from './audio.js';
 import { RECORDER } from './config.js';
+import { loadItems, checkItems } from './items.js';
 
 const $ = (id) => document.getElementById(id);
 const button = $('record');
+const nextButton = $('next');
 const ring = document.querySelector('.level-ring');
 
 let state = 'loading';
 let recording = null; // the { stop() } handle from recorder.js while recording
+let items = [];       // from voice/data/items.json
+let itemIndex = 0;    // which item is on screen
 
 /**
  * Move the page to a new state and update the button and status line.
@@ -32,6 +39,10 @@ function setState(next, message) {
   $('status').textContent = message;
   // The button can only be tapped to start (ready) or to stop (recording).
   button.disabled = !(next === 'ready' || next === 'recording');
+  // Changing letter mid-recording would score the sound against the wrong
+  // letter, so Next only works while waiting (or if the model failed to
+  // load, so the letters can still be looked through).
+  nextButton.disabled = !items.length || !(next === 'ready' || next === 'error');
   button.setAttribute('aria-label', {
     loading: 'Loading', ready: 'Record', starting: 'Starting',
     recording: 'Stop', thinking: 'Thinking', error: 'Not working',
@@ -83,6 +94,36 @@ async function finish() {
   }
 }
 
+// ---- The letter at the top, and the Next letter button. ----
+
+/** Put items[itemIndex] on screen and clear the last letter's results. */
+function showItem() {
+  const item = items[itemIndex];
+  $('item-show').textContent = item.show;
+  $('item-say').textContent = `say “${item.say}”`;
+  $('item-example').textContent = `as in ${item.example}`;
+
+  // Temporary, for testing: the phoneme sequences that will count as right,
+  // in the same symbols the "what the model heard" panel uses.
+  const target = $('item-target');
+  target.textContent = 'Listening for: ';
+  [item.target, ...item.alsoOk].forEach((sequence, i) => {
+    if (i > 0) target.append(' or ');
+    const span = document.createElement('span');
+    span.className = 'ph';
+    span.textContent = sequence.join(' ');
+    target.append(span);
+  });
+
+  $('heard').hidden = true;
+}
+
+nextButton.addEventListener('click', () => {
+  itemIndex = (itemIndex + 1) % items.length; // after the last, back to the first
+  showItem();
+  if (state === 'ready') setState('ready', 'Tap and say the sound');
+});
+
 // ---- Temporary results panel (until scorer.js gives a star). ----
 function showHeard(samples, clipSeconds, modelSeconds, phonemes) {
   const line = $('phonemes');
@@ -108,9 +149,13 @@ function showHeard(samples, clipSeconds, modelSeconds, phonemes) {
   $('heard').hidden = false;
 }
 
-// ---- Start-up: download the model, then enable the button. ----
+// ---- Start-up: show the first letter, download the model, then enable
+// the buttons. The letters are tiny, so they appear while the model loads.
 try {
-  await loadModel((fraction) => { $('progress').value = fraction; });
+  items = await loadItems();
+  showItem();
+  const vocab = await loadModel((fraction) => { $('progress').value = fraction; });
+  checkItems(items, vocab);
   setState('ready', 'Tap and say the sound');
 } catch (err) {
   console.error(err);
